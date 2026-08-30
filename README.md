@@ -35,8 +35,17 @@ Normalizes leads from any source into one schema and de-duplicates against Airta
 
 ## Architecture
 
-Open the [visual project page](./index.html#architecture) for the flow derived from the sanitized export.
+The diagram below represents the sanitized template flow. External services, credentials, and environment-specific identifiers must be configured before execution.
 
+```mermaid
+flowchart TD
+    A["Lead from any channel"] --> B["Normalize to common lead schema"]
+    B --> C["Search Airtable by email"]
+    C --> D{"Existing record?"}
+    D -->|Yes| E["Skip duplicate and tag skipped"]
+    D -->|No| F["Create master lead record"]
+    F --> G["Include in Slack summary"]
+```
 
 ## Workflow
 
