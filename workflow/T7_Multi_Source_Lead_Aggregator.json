@@ -1,0 +1,352 @@
+{
+  "name": "T7_Multi_Source_Lead_Aggregator",
+  "nodes": [
+    {
+      "id": "4fdb0af8-6c38-40cd-928b-cf7623a1fff9",
+      "name": "Note_98837f1a",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        50,
+        50
+      ],
+      "parameters": {
+        "content": "Created by Oyekola Ololade\nhttps://www.linkedin.com/in/ololade-oyekola-5b1797397/\nn8n Template Library - Gumroad",
+        "width": 300,
+        "height": 100,
+        "color": 4
+      }
+    },
+    {
+      "id": "1319718c-1567-49fb-aa5d-d9403f0220b3",
+      "name": "Multi-Source Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "db1959fd-e86c-491e-8596-1745010e3c04",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-aggregator",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2d8993ad-aafe-4166-85c2-85f750ded48a",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "acd24322-e1f5-4b72-b5f7-fccc7fa28e47",
+              "name": "source",
+              "value": "={{ $json.body.source || 'webhook' }}",
+              "type": "string"
+            },
+            {
+              "id": "6e198ad0-b980-481a-a085-49b65b056e40",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "991bf376-cf73-4904-b92f-f6f0fd789844",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "4e020fa9-81ad-4112-9393-54f7607fb649",
+              "name": "phone",
+              "value": "={{ $json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "5c005966-313c-46fc-9f01-68daf9be82b6",
+              "name": "data",
+              "value": "={{ JSON.stringify($json.body) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c7990654-8b08-47e8-84bf-737211648044",
+      "name": "Check Duplicate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/Leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_KEY"
+            }
+          ]
+        },
+        "options": {
+          "qs": {
+            "filterByFormula": "=\"{Email} = '\" + $json.email + \"'\""
+          }
+        }
+      }
+    },
+    {
+      "id": "19c4b20e-65c4-4476-a22a-20714141942d",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "badf0a52-f9a5-4dae-89cd-f73ca183a6d3",
+              "leftValue": "={{ $json.records.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "daecb5b5-b89c-46a6-86ea-07b626c53739",
+      "name": "Create Master Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        250
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/Master_Leads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "{\"Name\": \"{{ $json.name }}\", \"Email\": \"{{ $json.email }}\", \"Phone\": \"{{ $json.phone }}\", \"Source\": \"{{ $json.source }}\", \"Raw_Data\": \"{{ $json.data }}\", \"Date\": \"{{ $now.toISO() }}\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "025b5b85-6993-44eb-a30d-f59deabb1381",
+      "name": "Skip Duplicate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1050,
+        450
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "918439bd-89b8-4662-b564-adbafb56d65a",
+              "name": "action",
+              "value": "skipped",
+              "type": "string"
+            },
+            {
+              "id": "e2702d96-cf66-48d6-ac16-51cf968f3cee",
+              "name": "reason",
+              "value": "duplicate",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "44201886-211b-4151-99b0-3d2c9f8c34f9",
+      "name": "Daily Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        250
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=\"Daily Lead Summary: New leads processed. Check Master_Leads table.\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "99554c30-194d-4d20-a1e9-babc816c2d62",
+      "name": "End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Multi-Source Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Skip Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Master Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Master Record": {
+      "main": [
+        [
+          {
+            "node": "Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Summary": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Duplicate": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "Gumroad",
+    "Production",
+    "Template",
+    "Oyekola Ololade"
+  ],
+  "pinData": {},
+  "staticData": null
+}
